@@ -55,9 +55,10 @@ docker-compose.yml
 | Script | Purpose |
 |--------|---------|
 | `scripts/init.sh` | Reads `.env`, generates `config.yml` and `rclone.conf` |
-| `scripts/publish.sh` | Full pipeline: copies APKs, runs `fdroid update`, runs `fdroid deploy` |
+| `scripts/build.sh` | Copies APKs, verifies signatures, runs `fdroid update` (no deploy) |
+| `scripts/publish.sh` | Runs `build.sh` then `fdroid deploy` to push to S3 |
 | `scripts/verify.sh` | Verifies APK signatures in `repo/` using `apksigner` |
-| `scripts/clean.sh` | Wipes `repo/`, `tmp/`, `cache/`, `config.yml`, `rclone.conf` for a full reset |
+| `scripts/clean.sh` | Wipes `repo/`, `tmp/`, `cache/`, `metadata/`, `config.yml`, `rclone.conf` for a full reset |
 
 ## Bare-Metal Prerequisites
 
