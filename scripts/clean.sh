@@ -12,6 +12,7 @@ rm -rf "$ROOT_DIR/cache"
 rm -rf "$ROOT_DIR/metadata"
 rm -f  "$ROOT_DIR/config.yml"
 rm -f  "$ROOT_DIR/rclone.conf"
+rm -f  "$ROOT_DIR/.signing_mode"
 
 mkdir -p "$ROOT_DIR/repo" "$ROOT_DIR/tmp" "$ROOT_DIR/cache" "$ROOT_DIR/metadata"
 

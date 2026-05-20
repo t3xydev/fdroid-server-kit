@@ -12,6 +12,12 @@ cd "$ROOT_DIR"
 
 # -- Deploy to S3 ---------------------------------------------------------------
 
+if [ ! -s "$ROOT_DIR/rclone.conf" ]; then
+  echo "ERROR: rclone.conf is empty -- S3 vars are not configured."
+  echo "Set the S3_* variables in .env and run: ./scripts/init.sh"
+  exit 1
+fi
+
 echo "Running fdroid deploy..."
 fdroid deploy
 

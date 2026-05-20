@@ -27,7 +27,14 @@ cp apks/*.apk repo/
 
 # -- Optional: verify signatures -----------------------------------------------
 
-if command -v apksigner &>/dev/null; then
+ENV_FILE="${ENV_FILE:-$ROOT_DIR/.env}"
+if [ -f "$ENV_FILE" ]; then
+  REPO_SIGNED=$(grep -E '^REPO_SIGNED=' "$ENV_FILE" | cut -d= -f2 | tr -d '"' || echo "true")
+else
+  REPO_SIGNED="true"
+fi
+
+if [ "${REPO_SIGNED:-true}" = "true" ] && command -v apksigner &>/dev/null; then
   "$SCRIPT_DIR/verify.sh"
 fi
 
