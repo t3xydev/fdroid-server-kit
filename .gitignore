@@ -18,6 +18,7 @@ tmp/
 logs/
 srclibs/
 repo/
+metadata/
 
 # APK binaries
 apks/
