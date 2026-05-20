@@ -1,0 +1,10 @@
+services:
+  fdroid:
+    build: .
+    env_file: .env
+    volumes:
+      - ./apks:/srv/fdroid/apks
+      - ./metadata:/srv/fdroid/metadata
+      - ./keystore.p12:/srv/fdroid/keystore.p12:ro
+      - ./repo:/srv/fdroid/repo
+      - ./tmp:/srv/fdroid/tmp

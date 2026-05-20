@@ -1,0 +1,11 @@
+.env
+.idea
+*.p12
+rclone.conf
+config.yml
+repo/
+tmp/
+cache/
+logs/
+apks/
+.cursor/
