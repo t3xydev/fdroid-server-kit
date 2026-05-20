@@ -57,6 +57,7 @@ docker-compose.yml
 | `scripts/init.sh` | Reads `.env`, generates `config.yml` and `rclone.conf` |
 | `scripts/build.sh` | Copies APKs, verifies signatures, runs `fdroid update` (no deploy) |
 | `scripts/publish.sh` | Runs `build.sh` then `fdroid deploy` to push to S3 |
+| `scripts/keygen.sh` | Generates a signing keystore via `fdroid update --create-key` |
 | `scripts/verify.sh` | Verifies APK signatures in `repo/` using `apksigner` |
 | `scripts/clean.sh` | Wipes `repo/`, `tmp/`, `cache/`, `metadata/`, `config.yml`, `rclone.conf` for a full reset |
 
