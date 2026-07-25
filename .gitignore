@@ -3,6 +3,7 @@
 
 # Secrets (never commit)
 .env
+.env.*
 keystore.p12
 *.p12
 *.jks
