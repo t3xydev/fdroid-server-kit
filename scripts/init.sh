@@ -28,9 +28,20 @@ require_var REPO_NAME
 require_var REPO_URL
 require_var KEYSTORE_FILE
 require_var REPO_KEYALIAS
+require_var KEYDNAME
+
+# Auto-generate keystore passwords if left blank in .env
+if [ -z "${KEYSTORE_PASS:-}" ] || [ -z "${KEY_PASS:-}" ]; then
+  echo "KEYSTORE_PASS/KEY_PASS blank -- generating secret..."
+  "$SCRIPT_DIR/gensecret.sh"
+  set -a
+  # shellcheck source=/dev/null
+  source "$ENV_FILE"
+  set +a
+fi
+
 require_var KEYSTORE_PASS
 require_var KEY_PASS
-require_var KEYDNAME
 
 S3_READY="true"
 S3_REQUIRED_VARS=(S3_REMOTE_NAME S3_PROVIDER S3_BUCKET S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY S3_ENDPOINT)

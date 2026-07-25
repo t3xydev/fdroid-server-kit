@@ -8,7 +8,8 @@ Portable, env-driven F-Droid repository that deploys to any S3-compatible storag
 
 ```bash
 cp .env.example .env
-# Edit .env with your repo name, S3 credentials, keystore password, etc.
+# Edit .env with your repo name, S3 credentials, etc.
+# Leave KEYSTORE_PASS/KEY_PASS blank -- init auto-generates them.
 ```
 
 ### 2. Add APKs
@@ -37,6 +38,7 @@ docker compose run --rm fdroid
 .env                # Your config (gitignored)
 scripts/
   init.sh           # Generate config.yml + rclone.conf from .env
+  gensecret.sh      # Generate random keystore passwords into .env
   publish.sh        # Full pipeline: copy, update, deploy
   verify.sh         # APK signature verification
   clean.sh          # Reset repo (wipe generated files)
@@ -54,9 +56,10 @@ docker-compose.yml
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/init.sh` | Reads `.env`, generates `config.yml` and `rclone.conf` |
+| `scripts/init.sh` | Reads `.env`, generates `config.yml` and `rclone.conf` (auto-fills blank keystore passwords) |
 | `scripts/build.sh` | Copies APKs, verifies signatures, runs `fdroid update` (no deploy) |
 | `scripts/publish.sh` | Runs `build.sh` then `fdroid deploy` to push to S3 |
+| `scripts/gensecret.sh` | Writes a random `KEYSTORE_PASS` / `KEY_PASS` into `.env` |
 | `scripts/keygen.sh` | Generates a signing keystore via `fdroid update --create-key` |
 | `scripts/verify.sh` | Verifies APK signatures in `repo/` using `apksigner` |
 | `scripts/clean.sh` | Wipes `repo/`, `tmp/`, `cache/`, `metadata/`, `config.yml`, `rclone.conf` for a full reset |
