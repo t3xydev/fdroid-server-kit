@@ -25,22 +25,23 @@ fi
 echo "Copying $APK_COUNT APK(s) to repo/..."
 cp apks/*.apk repo/
 
-# -- Optional: verify signatures -----------------------------------------------
+# -- Verify APK signatures ----------------------------------------------------
 
-ENV_FILE="${ENV_FILE:-$ROOT_DIR/.env}"
-if [ -f "$ENV_FILE" ]; then
-  REPO_SIGNED=$(grep -E '^REPO_SIGNED=' "$ENV_FILE" | cut -d= -f2 | tr -d '"' || echo "true")
-else
-  REPO_SIGNED="true"
-fi
-
-if [ "${REPO_SIGNED:-true}" = "true" ] && command -v apksigner &>/dev/null; then
+if command -v apksigner &>/dev/null; then
   "$SCRIPT_DIR/verify.sh"
 fi
 
 # -- Update index ---------------------------------------------------------------
 
+ENV_FILE="${ENV_FILE:-$ROOT_DIR/.env}"
+KEYSTORE_FILE=$(grep -E '^KEYSTORE_FILE=' "$ENV_FILE" | cut -d= -f2 | tr -d '"' || echo "keystore.p12")
+
+UPDATE_FLAGS=(--create-metadata --pretty)
+if [ ! -f "$ROOT_DIR/${KEYSTORE_FILE}" ]; then
+  UPDATE_FLAGS+=(--create-key)
+fi
+
 echo "Running fdroid update..."
-fdroid update --create-metadata --pretty
+fdroid update "${UPDATE_FLAGS[@]}"
 
 echo "Build complete. Run ./scripts/publish.sh to deploy to S3."

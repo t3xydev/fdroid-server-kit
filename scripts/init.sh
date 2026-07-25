@@ -24,10 +24,13 @@ require_var() {
   fi
 }
 
-REPO_SIGNED="${REPO_SIGNED:-true}"
-
 require_var REPO_NAME
 require_var REPO_URL
+require_var KEYSTORE_FILE
+require_var REPO_KEYALIAS
+require_var KEYSTORE_PASS
+require_var KEY_PASS
+require_var KEYDNAME
 
 S3_READY="true"
 S3_REQUIRED_VARS=(S3_REMOTE_NAME S3_PROVIDER S3_BUCKET S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY S3_ENDPOINT)
@@ -39,31 +42,6 @@ for var in "${S3_REQUIRED_VARS[@]}"; do
     S3_MISSING+=("$var")
   fi
 done
-
-if [ "$REPO_SIGNED" = "true" ]; then
-  require_var KEYSTORE_FILE
-  require_var REPO_KEYALIAS
-  require_var KEYSTORE_PASS
-  require_var KEY_PASS
-  require_var KEYDNAME
-fi
-
-# -- Detect signing mode change ------------------------------------------------
-
-STATE_FILE="$ROOT_DIR/.signing_mode"
-
-if [ -f "$STATE_FILE" ]; then
-  PREV_MODE=$(cat "$STATE_FILE")
-  if [ "$PREV_MODE" != "$REPO_SIGNED" ]; then
-    echo ""
-    echo "WARNING: REPO_SIGNED changed from '$PREV_MODE' to '$REPO_SIGNED'."
-    echo "You must clean and re-init for this to take effect:"
-    echo ""
-    echo "  ./scripts/clean.sh && ./scripts/init.sh"
-    echo ""
-    exit 1
-  fi
-fi
 
 # -- Generate config.yml ------------------------------------------------------
 
@@ -91,8 +69,7 @@ rclone: true
 YAML
 fi
 
-if [ "$REPO_SIGNED" = "true" ]; then
-  cat >> "$ROOT_DIR/config.yml" <<YAML
+cat >> "$ROOT_DIR/config.yml" <<YAML
 
 repo_keyalias: ${REPO_KEYALIAS}
 keystore: ${KEYSTORE_FILE}
@@ -100,15 +77,12 @@ keystorepass: ${KEYSTORE_PASS}
 keypass: ${KEY_PASS}
 keydname: ${KEYDNAME}
 YAML
-fi
 
 if [ -n "${REPO_WEB_BASE_URL:-}" ]; then
   echo "repo_web_base_url: ${REPO_WEB_BASE_URL}" >> "$ROOT_DIR/config.yml"
 fi
 
-echo "$REPO_SIGNED" > "$STATE_FILE"
-
-echo "Generated config.yml (signed=$REPO_SIGNED)"
+echo "Generated config.yml"
 
 # -- Generate rclone.conf -----------------------------------------------------
 
