@@ -39,7 +39,7 @@ docker compose run --rm fdroid
 scripts/
   init.sh           # Generate config.yml + rclone.conf from .env
   gensecret.sh      # Generate random keystore passwords into .env
-  publish.sh        # Full pipeline: copy, update, deploy
+  publish.sh        # Clean, rebuild, and deploy to S3
   verify.sh         # APK signature verification
   clean.sh          # Reset repo (wipe generated files)
 apks/               # Drop APKs here (input)
@@ -58,7 +58,7 @@ docker-compose.yml
 |--------|---------|
 | `scripts/init.sh` | Reads `.env`, generates `config.yml` and `rclone.conf` (auto-fills blank keystore passwords) |
 | `scripts/build.sh` | Copies APKs, verifies signatures, runs `fdroid update` (no deploy) |
-| `scripts/publish.sh` | Runs `build.sh` then `fdroid deploy` to push to S3 |
+| `scripts/publish.sh` | Cleans, rebuilds from `apks/`, then deploys to S3 |
 | `scripts/gensecret.sh` | Writes a random `KEYSTORE_PASS` / `KEY_PASS` into `.env` |
 | `scripts/keygen.sh` | Generates a signing keystore via `fdroid update --create-key` |
 | `scripts/verify.sh` | Verifies APK signatures in `repo/` using `apksigner` |

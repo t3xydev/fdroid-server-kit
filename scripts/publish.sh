@@ -6,8 +6,10 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$ROOT_DIR"
 
-# -- Build (copy APKs + update index) -----------------------------------------
+# -- Clean + rebuild from scratch ---------------------------------------------
 
+"$SCRIPT_DIR/clean.sh"
+"$SCRIPT_DIR/init.sh"
 "$SCRIPT_DIR/build.sh"
 
 # -- Deploy to S3 ---------------------------------------------------------------
