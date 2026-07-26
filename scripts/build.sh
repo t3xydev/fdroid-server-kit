@@ -25,6 +25,14 @@ fi
 echo "Copying $APK_COUNT APK(s) to repo/..."
 cp apks/*.apk repo/
 
+# -- Repo icon (persists across clean via assets/) -----------------------------
+
+mkdir -p repo/icons
+if [ -f "$ROOT_DIR/assets/icon.png" ]; then
+  cp "$ROOT_DIR/assets/icon.png" repo/icons/icon.png
+  echo "Copied assets/icon.png -> repo/icons/icon.png"
+fi
+
 # -- Verify APK signatures ----------------------------------------------------
 
 if command -v apksigner &>/dev/null; then
