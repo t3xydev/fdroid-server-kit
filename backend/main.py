@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import json
 import os
 import re
+import secrets
 import shutil
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -18,6 +23,16 @@ DATA_DIR = Path(os.environ.get("DATA_DIR", str(ROOT_DIR))).resolve()
 SCRIPTS_DIR = ROOT_DIR / "scripts"
 STATUS_FILE = DATA_DIR / "status.json"
 WEBHOOK_TOKEN = os.environ.get("WEBHOOK_TOKEN", "")
+# Secret from `eas webhook:create --secret`. Falls back to WEBHOOK_TOKEN.
+EAS_WEBHOOK_SECRET = os.environ.get("EAS_WEBHOOK_SECRET") or WEBHOOK_TOKEN
+
+# EAS buildProfile → APK channel suffix (project_channel.apk)
+EAS_PROFILE_CHANNELS = {
+    "production": "production",
+    "preview": "preview",
+    "development": "dev",
+    "dev": "dev",
+}
 
 S3_REQUIRED = (
     "S3_REMOTE_NAME",
@@ -107,6 +122,56 @@ def safe_apk_name(filename: str | None) -> str:
     if not name.lower().endswith(".apk"):
         name = f"{name}.apk"
     return name or "upload.apk"
+
+
+def eas_channel_from_profile(build_profile: str | None) -> str | None:
+    if not build_profile:
+        return None
+    return EAS_PROFILE_CHANNELS.get(build_profile.strip().lower())
+
+
+def eas_bundle_name(project_name: str, channel: str) -> str:
+    """APK filename: {project}_{production|preview|dev}.apk"""
+    project = re.sub(r"[^A-Za-z0-9._-]+", "_", (project_name or "app").strip()) or "app"
+    return safe_apk_name(f"{project}_{channel}.apk")
+
+
+def verify_eas_signature(body: bytes, expo_signature: str | None) -> None:
+    if not EAS_WEBHOOK_SECRET:
+        raise HTTPException(
+            status_code=503,
+            detail="EAS_WEBHOOK_SECRET (or WEBHOOK_TOKEN) is not configured",
+        )
+    if not expo_signature:
+        raise HTTPException(status_code=401, detail="Missing expo-signature header")
+    digest = hmac.new(
+        EAS_WEBHOOK_SECRET.encode("utf-8"),
+        body,
+        hashlib.sha1,
+    ).hexdigest()
+    expected = f"sha1={digest}"
+    if not secrets.compare_digest(expo_signature, expected):
+        raise HTTPException(status_code=401, detail="Invalid expo-signature")
+
+
+async def download_url_to_file(url: str, dest: Path) -> None:
+    def _download() -> None:
+        req = urllib.request.Request(url, headers={"User-Agent": "fdroid-server/1.0"})
+        with urllib.request.urlopen(req, timeout=300) as resp, dest.open("wb") as out:
+            shutil.copyfileobj(resp, out)
+
+    try:
+        await asyncio.to_thread(_download)
+    except urllib.error.HTTPError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to download EAS artifact: HTTP {exc.code}",
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to download EAS artifact: {exc.reason}",
+        ) from exc
 
 
 async def run_script(script_name: str) -> dict[str, Any]:
@@ -251,6 +316,87 @@ async def hooks_apk(
     return status
 
 
+@app.post("/hooks/eas")
+async def hooks_eas(request: Request) -> dict[str, Any]:
+    """Ingest finished Android APK builds from an EAS Build webhook.
+
+    Saves as ``{projectName}_{production|preview|dev}.apk`` then publishes.
+    Configure with: ``eas webhook:create --event BUILD --url ... --secret ...``
+    """
+    body = await request.body()
+    verify_eas_signature(body, request.headers.get("expo-signature"))
+
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
+
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Expected a JSON object")
+
+    status = str(payload.get("status") or "")
+    platform = str(payload.get("platform") or "").lower()
+    metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+    artifacts = payload.get("artifacts") if isinstance(payload.get("artifacts"), dict) else {}
+    build_profile = str(metadata.get("buildProfile") or "")
+    project_name = str(payload.get("projectName") or metadata.get("appName") or "app")
+    build_url = str(artifacts.get("buildUrl") or "")
+    channel = eas_channel_from_profile(build_profile)
+
+    # Ack non-ingest events so EAS does not retry.
+    if status != "finished":
+        return {
+            "ok": True,
+            "ingested": False,
+            "reason": f"ignored status={status or 'unknown'}",
+        }
+    if platform != "android":
+        return {
+            "ok": True,
+            "ingested": False,
+            "reason": f"ignored platform={platform or 'unknown'}",
+        }
+    if not channel:
+        return {
+            "ok": True,
+            "ingested": False,
+            "reason": (
+                f"ignored buildProfile={build_profile or 'unknown'}; "
+                "expected production, preview, or development/dev"
+            ),
+        }
+    if not build_url:
+        return {
+            "ok": True,
+            "ingested": False,
+            "reason": "finished build has no artifacts.buildUrl",
+        }
+    if not build_url.lower().endswith(".apk") and ".apk?" not in build_url.lower():
+        return {
+            "ok": True,
+            "ingested": False,
+            "reason": "artifact is not an APK (set android.buildType=apk on the EAS profile)",
+        }
+
+    ensure_data_dirs()
+    filename = eas_bundle_name(project_name, channel)
+    dest = DATA_DIR / "apks" / filename
+    await download_url_to_file(build_url, dest)
+
+    result = await run_publish_job(f"eas:{filename}")
+    result["apk"] = filename
+    result["ingested"] = True
+    result["eas"] = {
+        "build_id": payload.get("id"),
+        "project_name": project_name,
+        "build_profile": build_profile,
+        "channel": channel,
+        "app_version": metadata.get("appVersion"),
+        "app_build_version": metadata.get("appBuildVersion"),
+    }
+    return result
+
+
 # Mount repo static files when self-host is active (and always for debug browse).
 # Clients should use REPO_URL pointing here when mode is self_host.
 repo_dir = DATA_DIR / "repo"
@@ -269,6 +415,7 @@ def root() -> JSONResponse:
             "repo": "/fdroid/repo/" if is_self_host() else None,
             "hooks": {
                 "apk": "POST /hooks/apk",
+                "eas": "POST /hooks/eas",
                 "publish": "POST /hooks/publish",
             },
         }

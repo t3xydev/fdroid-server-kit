@@ -41,6 +41,19 @@ curl -X POST "http://localhost:8000/hooks/publish" \
   -H "Authorization: Bearer $WEBHOOK_TOKEN"
 ```
 
+#### EAS Expo ingest
+
+Point an EAS Build webhook at `POST /hooks/eas`. Finished Android APK builds for `production`, `preview`, or `development`/`dev` are saved as `{projectName}_{production|preview|dev}.apk` and published.
+
+```bash
+eas webhook:create \
+  --event BUILD \
+  --url "https://YOUR_HOST/hooks/eas" \
+  --secret "$EAS_WEBHOOK_SECRET"
+```
+
+Use the same value for `EAS_WEBHOOK_SECRET` (or `WEBHOOK_TOKEN`) on the server. EAS profiles must produce APKs (`android.buildType: "apk"`), not AABs.
+
 ### One-shot full publish
 
 ```bash
@@ -118,5 +131,5 @@ See [`.env.example`](.env.example):
 - **Mode**: `SELF_HOST`, `DATA_DIR`
 - **Repo**: `REPO_NAME`, `REPO_URL`, `REPO_DESCRIPTION`, `REPO_WEB_BASE_URL`
 - **Signing**: `KEYSTORE_FILE`, `REPO_KEYALIAS`, `KEYSTORE_PASS`, `KEY_PASS`, `KEYDNAME`
-- **Webhooks**: `WEBHOOK_TOKEN`
+- **Webhooks**: `WEBHOOK_TOKEN`, optional `EAS_WEBHOOK_SECRET` for `/hooks/eas`
 - **S3**: `S3_REMOTE_NAME`, `S3_PROVIDER`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`, `S3_ENDPOINT`
