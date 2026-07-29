@@ -2,17 +2,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+# shellcheck source=common.sh
+source "$SCRIPT_DIR/common.sh"
 
-echo "Cleaning generated files..."
+echo "Cleaning generated files in $DATA_DIR..."
 
-rm -rf "$ROOT_DIR/repo"
-rm -rf "$ROOT_DIR/tmp"
-rm -rf "$ROOT_DIR/cache"
-rm -rf "$ROOT_DIR/metadata"
-rm -f  "$ROOT_DIR/config.yml"
-rm -f  "$ROOT_DIR/rclone.conf"
+rm -rf "$DATA_DIR/repo"
+rm -rf "$DATA_DIR/tmp"
+rm -rf "$DATA_DIR/cache"
+rm -rf "$DATA_DIR/metadata"
+rm -f  "$DATA_DIR/config.yml"
+rm -f  "$DATA_DIR/rclone.conf"
 
-mkdir -p "$ROOT_DIR/repo" "$ROOT_DIR/tmp" "$ROOT_DIR/cache" "$ROOT_DIR/metadata"
+mkdir -p "$DATA_DIR/repo" "$DATA_DIR/tmp" "$DATA_DIR/cache" "$DATA_DIR/metadata"
 
 echo "Clean complete. Run ./scripts/publish.sh to rebuild from scratch."

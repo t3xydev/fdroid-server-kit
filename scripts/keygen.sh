@@ -2,34 +2,35 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+# shellcheck source=common.sh
+source "$SCRIPT_DIR/common.sh"
 
-cd "$ROOT_DIR"
-
-# -- Generate configs if missing -----------------------------------------------
+load_env
+ensure_dirs
+cd "$DATA_DIR"
 
 if [ ! -f config.yml ]; then
   echo "config.yml missing -- running init..."
   "$SCRIPT_DIR/init.sh"
 fi
 
-# -- Guard: don't overwrite existing keystore ----------------------------------
+KS_PATH="$(keystore_path)"
 
-ENV_FILE="${ENV_FILE:-$ROOT_DIR/.env}"
-KEYSTORE_FILE=$(grep -E '^KEYSTORE_FILE=' "$ENV_FILE" | cut -d= -f2 | tr -d '"' || echo "keystore.p12")
-
-if [ -f "$ROOT_DIR/${KEYSTORE_FILE:-keystore.p12}" ]; then
-  echo "WARNING: ${KEYSTORE_FILE:-keystore.p12} already exists."
-  read -rp "Overwrite? (y/N) " confirm
-  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    echo "Aborted."
-    exit 0
+if [ -f "$KS_PATH" ]; then
+  echo "WARNING: $KS_PATH already exists."
+  if [ -t 0 ]; then
+    read -rp "Overwrite? (y/N) " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+      echo "Aborted."
+      exit 0
+    fi
+  else
+    echo "Non-interactive shell -- aborting to avoid overwrite."
+    exit 1
   fi
 fi
-
-# -- Generate keystore ---------------------------------------------------------
 
 echo "Generating keystore via fdroid update..."
 fdroid update --create-key
 
-echo "Keystore created. You can now run ./scripts/build.sh or ./scripts/publish.sh."
+echo "Keystore created at $KS_PATH."

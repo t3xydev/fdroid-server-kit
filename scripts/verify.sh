@@ -2,9 +2,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+# shellcheck source=common.sh
+source "$SCRIPT_DIR/common.sh"
 
-REPO_DIR="$ROOT_DIR/repo"
+REPO_DIR="$DATA_DIR/repo"
 
 if ! command -v apksigner &>/dev/null; then
   echo "WARNING: apksigner not found -- skipping verification."
@@ -29,7 +30,7 @@ for apk in "$REPO_DIR"/*.apk; do
 done
 
 if [ "$APK_COUNT" -eq 0 ]; then
-  echo "No APKs found in repo/ to verify."
+  echo "No APKs found in $REPO_DIR to verify."
   exit 0
 fi
 

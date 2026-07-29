@@ -9,4 +9,8 @@ cache/
 logs/
 metadata/
 apks/
+data/
 .cursor/
+__pycache__/
+*.pyc
+.venv/

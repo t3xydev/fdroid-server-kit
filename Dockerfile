@@ -2,7 +2,9 @@ FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive \
     ANDROID_HOME=/opt/android-sdk \
-    PATH="/opt/android-sdk/build-tools/36.0.0:${PATH}"
+    PATH="/opt/android-sdk/build-tools/36.0.0:${PATH}" \
+    DATA_DIR=/data \
+    PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       fdroidserver \
@@ -11,6 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       unzip \
       openjdk-17-jre-headless \
       ca-certificates \
+      python3 \
+      python3-pip \
+      python3-venv \
+      openssl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p "$ANDROID_HOME/build-tools" \
@@ -23,9 +29,18 @@ RUN mkdir -p "$ANDROID_HOME/build-tools" \
 
 WORKDIR /srv/fdroid
 
-COPY scripts/ scripts/
-RUN chmod +x scripts/*.sh
+COPY backend/requirements.txt backend/requirements.txt
+RUN python3 -m pip install --no-cache-dir --break-system-packages \
+      -r backend/requirements.txt
 
+COPY scripts/ scripts/
+COPY backend/ backend/
+COPY assets/ assets/
 COPY .env.example .env.example
 
-ENTRYPOINT ["scripts/publish.sh"]
+RUN chmod +x scripts/*.sh \
+    && mkdir -p /data
+
+EXPOSE 8000
+
+CMD ["python3", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

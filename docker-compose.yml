@@ -2,9 +2,22 @@ services:
   fdroid:
     build: .
     env_file: .env
+    environment:
+      DATA_DIR: /data
+    ports:
+      - "8000:8000"
     volumes:
-      - ./apks:/srv/fdroid/apks
-      - ./metadata:/srv/fdroid/metadata
-      - ./keystore.p12:/srv/fdroid/keystore.p12:ro
-      - ./repo:/srv/fdroid/repo
-      - ./tmp:/srv/fdroid/tmp
+      - ./data:/data
+    restart: unless-stopped
+
+  # One-shot full clean + publish against the same data volume:
+  #   docker compose --profile publish run --rm publish
+  publish:
+    profiles: ["publish"]
+    build: .
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data
+    entrypoint: ["scripts/publish.sh"]
