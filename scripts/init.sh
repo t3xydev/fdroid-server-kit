@@ -54,6 +54,9 @@ fi
 
 ensure_dirs
 
+# Rewrites only config.yml + rclone.conf from env.
+# Never removes or replaces files under apks/ (or keystore / metadata).
+
 # Keystore path in config.yml: relative name is fine when cwd is DATA_DIR
 KS_FILE="${KEYSTORE_FILE:-keystore.p12}"
 if [[ "$KS_FILE" = /* ]]; then

@@ -63,6 +63,7 @@ resolve_mode() {
 }
 
 ensure_dirs() {
+  # Create dirs only — never delete contents of apks/ (or other data dirs)
   mkdir -p "$DATA_DIR/apks" "$DATA_DIR/repo" "$DATA_DIR/metadata" \
            "$DATA_DIR/tmp" "$DATA_DIR/cache" "$DATA_DIR/logs" "$DATA_DIR/srclibs" \
            "$DATA_DIR/assets"

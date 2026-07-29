@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 echo "Cleaning generated files in $DATA_DIR..."
+echo "(apks/ and keystore are preserved)"
 
 rm -rf "$DATA_DIR/repo"
 rm -rf "$DATA_DIR/tmp"

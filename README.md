@@ -49,7 +49,7 @@ docker compose --profile publish run --rm publish
 
 ## Deploy on Railway
 
-[`railway.toml`](railway.toml) builds from the Dockerfile and starts via [`scripts/start.sh`](scripts/start.sh) (same as local Docker): **init on boot** to sync `config.yml` / `rclone.conf` from env, then uvicorn.
+[`railway.toml`](railway.toml) builds from the Dockerfile and starts via [`scripts/start.sh`](scripts/start.sh) (same as local Docker): **init on first boot only** (when `config.yml` is missing). APKs under `/data/apks` are never cleared by init. Env changes apply on the next publish (`update.sh` always re-runs init).
 
 1. Create a service from this repo (Railway will pick up the Dockerfile).
 2. **Attach a volume** with mount path **`/data`** (required for APKs, keystore, and generated repo):

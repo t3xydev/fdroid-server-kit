@@ -9,9 +9,14 @@ cd "$ROOT_DIR"
 export DATA_DIR="${DATA_DIR:-/data}"
 mkdir -p "$DATA_DIR"
 
-# Sync config.yml / rclone.conf from env on every boot
-echo "Running init on boot (DATA_DIR=$DATA_DIR)..."
-"$SCRIPT_DIR/init.sh"
+# First boot only: create config.yml / rclone.conf if missing.
+# Does not touch apks/. Env changes are picked up on publish (update.sh → init).
+if [ ! -f "$DATA_DIR/config.yml" ]; then
+  echo "No config.yml yet — running init (DATA_DIR=$DATA_DIR)..."
+  "$SCRIPT_DIR/init.sh"
+else
+  echo "config.yml present — skipping boot init (apks/ and data preserved)."
+fi
 
 # Railway and other PaaS inject PORT; local Docker defaults to 8000
 PORT="${PORT:-8000}"
