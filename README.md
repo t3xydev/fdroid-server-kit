@@ -49,7 +49,7 @@ docker compose --profile publish run --rm publish
 
 ## Deploy on Railway
 
-[`railway.toml`](railway.toml) builds from the Dockerfile and health-checks `/health`.
+[`railway.toml`](railway.toml) builds from the Dockerfile and sets an explicit uvicorn `startCommand` (Railway injects `PORT`). Local Docker / Compose use [`scripts/start.sh`](scripts/start.sh) instead.
 
 1. Create a service from this repo (Railway will pick up the Dockerfile).
 2. **Attach a volume** with mount path **`/data`** (required for APKs, keystore, and generated repo):

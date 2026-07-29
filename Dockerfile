@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       python3-pip \
       python3-venv \
       openssl \
+      bash \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p "$ANDROID_HOME/build-tools" \
@@ -41,7 +42,10 @@ COPY .env.example .env.example
 RUN chmod +x scripts/*.sh \
     && mkdir -p /data
 
+ENV PORT=8000 \
+    DATA_DIR=/data
+
 EXPOSE 8000
 
-# Railway injects PORT; local/docker default to 8000
-CMD ["sh", "-c", "python3 -m uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Same entrypoint for Docker Compose, plain Docker, and Railway
+CMD ["scripts/start.sh"]

@@ -1,6 +1,7 @@
-# Railway config — Dockerfile deploy for the F-Droid dual-mode server.
-# Attach a persistent volume with mount path /data (dashboard or:
-#   railway volume add --mount-path /data)
+# Railway config — Dockerfile build + explicit start (does not rely on bash).
+# Local Docker / Compose use image CMD: scripts/start.sh
+# Attach a persistent volume with mount path /data:
+#   railway volume add --mount-path /data
 
 [build]
 builder = "DOCKERFILE"
