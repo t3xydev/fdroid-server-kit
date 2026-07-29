@@ -1,5 +1,4 @@
-# Railway config — Dockerfile build + explicit start (does not rely on bash).
-# Local Docker / Compose use image CMD: scripts/start.sh
+# Railway config — same start path as local Docker (scripts/start.sh).
 # Attach a persistent volume with mount path /data:
 #   railway volume add --mount-path /data
 
@@ -8,8 +7,8 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# Must run under a shell so ${PORT} expands (Railway passes startCommand as-is otherwise)
-startCommand = "/bin/sh -c 'python3 -m uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}'"
+# start.sh runs init (sync config from env) then uvicorn; bash is in the image
+startCommand = "bash scripts/start.sh"
 #healthcheckPath = "/health"
 #healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
