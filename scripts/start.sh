@@ -14,14 +14,18 @@ export DATA_DIR
 load_env
 
 # Always rewrite config.yml / rclone.conf from current env (never touches apks/).
+# Init failure must not block serving an existing repo.
 echo "Syncing config from env (DATA_DIR=$DATA_DIR)..."
-"$SCRIPT_DIR/init.sh"
+if ! "$SCRIPT_DIR/init.sh"; then
+  echo "WARNING: init.sh failed — continuing with existing config if present."
+fi
 
 # Rebuild the repo index when env-driven settings that affect the index change.
-# Without this, Railway env edits leave a stale signed index on the volume.
+# Rebuild runs in the background so a failed fdroid update cannot crash the service.
 FINGERPRINT_FILE="$DATA_DIR/.env_fingerprint"
 env_fingerprint() {
-  printf '%s\0' \
+  local payload
+  payload="$(printf '%s\0' \
     "${REPO_NAME:-}" \
     "${REPO_URL:-}" \
     "${REPO_DESCRIPTION:-}" \
@@ -36,30 +40,43 @@ env_fingerprint() {
     "${S3_ENDPOINT:-}" \
     "${S3_REGION:-}" \
     "${S3_ACCESS_KEY_ID:-}" \
-    "${S3_SECRET_ACCESS_KEY:-}" \
-    | sha256sum | awk '{print $1}'
+    "${S3_SECRET_ACCESS_KEY:-}")"
+  if command -v sha256sum >/dev/null 2>&1; then
+    printf '%s' "$payload" | sha256sum | awk '{print $1}'
+  else
+    printf '%s' "$payload" | openssl dgst -sha256 | awk '{print $NF}'
+  fi
 }
 
 NEW_FP="$(env_fingerprint)"
 OLD_FP=""
 if [ -f "$FINGERPRINT_FILE" ]; then
-  OLD_FP="$(cat "$FINGERPRINT_FILE")"
+  OLD_FP="$(tr -d '[:space:]' < "$FINGERPRINT_FILE")"
 fi
 
 APK_COUNT=$(find "$DATA_DIR/apks" -maxdepth 1 -name '*.apk' 2>/dev/null | wc -l | tr -d ' ')
 
-if [ "$APK_COUNT" -gt 0 ] && [ "$NEW_FP" != "$OLD_FP" ]; then
-  echo "Env/config fingerprint changed — rebuilding repo index..."
-  "$SCRIPT_DIR/update.sh"
-  echo "$NEW_FP" > "$FINGERPRINT_FILE"
-elif [ "$APK_COUNT" -eq 0 ]; then
-  echo "No APKs yet — skipping rebuild. Drop APKs or call webhook, then update."
-  echo "$NEW_FP" > "$FINGERPRINT_FILE"
-else
-  echo "Env fingerprint unchanged — serving existing repo."
-fi
+maybe_rebuild() {
+  if [ "$APK_COUNT" -eq 0 ]; then
+    echo "No APKs yet — skipping rebuild."
+    echo "$NEW_FP" > "$FINGERPRINT_FILE"
+    return 0
+  fi
+  if [ "$NEW_FP" = "$OLD_FP" ]; then
+    echo "Env fingerprint unchanged — serving existing repo."
+    return 0
+  fi
+  echo "Env/config fingerprint changed — rebuilding repo index in background..."
+  if "$SCRIPT_DIR/update.sh"; then
+    echo "$NEW_FP" > "$FINGERPRINT_FILE"
+    echo "Background rebuild complete."
+  else
+    echo "WARNING: background rebuild failed — serving previous repo if any."
+  fi
+}
 
-# Railway and other PaaS inject PORT; local Docker defaults to 8000
+# Kick off rebuild without blocking uvicorn (Railway healthchecks need the port up).
+maybe_rebuild &
+
 PORT="${PORT:-8000}"
-
 exec python3 -m uvicorn backend.main:app --host 0.0.0.0 --port "$PORT"
