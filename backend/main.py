@@ -130,10 +130,10 @@ def eas_channel_from_profile(build_profile: str | None) -> str | None:
     return EAS_PROFILE_CHANNELS.get(build_profile.strip().lower())
 
 
-def eas_bundle_name(project_name: str, channel: str) -> str:
-    """APK filename: {project}_{production|preview|dev}.apk"""
-    project = re.sub(r"[^A-Za-z0-9._-]+", "_", (project_name or "app").strip()) or "app"
-    return safe_apk_name(f"{project}_{channel}.apk")
+def eas_bundle_name(display_name: str, channel: str) -> str:
+    """APK filename: {displayName}_{production|preview|dev}.apk"""
+    name = re.sub(r"[^A-Za-z0-9._-]+", "_", (display_name or "app").strip()) or "app"
+    return safe_apk_name(f"{name}_{channel}.apk")
 
 
 def verify_eas_signature(body: bytes, expo_signature: str | None) -> None:
@@ -320,7 +320,8 @@ async def hooks_apk(
 async def hooks_eas(request: Request) -> dict[str, Any]:
     """Ingest finished Android APK builds from an EAS Build webhook.
 
-    Saves as ``{projectName}_{production|preview|dev}.apk`` then publishes.
+    Saves as ``{displayName}_{production|preview|dev}.apk`` then publishes.
+    Display name comes from EAS ``metadata.appName`` (app.json ``name``).
     Configure with: ``eas webhook:create --event BUILD --url ... --secret ...``
     """
     body = await request.body()
@@ -339,7 +340,8 @@ async def hooks_eas(request: Request) -> dict[str, Any]:
     metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
     artifacts = payload.get("artifacts") if isinstance(payload.get("artifacts"), dict) else {}
     build_profile = str(metadata.get("buildProfile") or "")
-    project_name = str(payload.get("projectName") or metadata.get("appName") or "app")
+    # Prefer display name (app.json `name`); fall back to Expo project slug.
+    display_name = str(metadata.get("appName") or payload.get("projectName") or "app")
     build_url = str(artifacts.get("buildUrl") or "")
     channel = eas_channel_from_profile(build_profile)
 
@@ -379,7 +381,7 @@ async def hooks_eas(request: Request) -> dict[str, Any]:
         }
 
     ensure_data_dirs()
-    filename = eas_bundle_name(project_name, channel)
+    filename = eas_bundle_name(display_name, channel)
     dest = DATA_DIR / "apks" / filename
     await download_url_to_file(build_url, dest)
 
@@ -388,7 +390,8 @@ async def hooks_eas(request: Request) -> dict[str, Any]:
     result["ingested"] = True
     result["eas"] = {
         "build_id": payload.get("id"),
-        "project_name": project_name,
+        "display_name": display_name,
+        "project_name": payload.get("projectName"),
         "build_profile": build_profile,
         "channel": channel,
         "app_version": metadata.get("appVersion"),

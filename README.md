@@ -43,7 +43,7 @@ curl -X POST "http://localhost:8000/hooks/publish" \
 
 #### EAS Expo ingest
 
-Point an EAS Build webhook at `POST /hooks/eas`. Finished Android APK builds for `production`, `preview`, or `development`/`dev` are saved as `{projectName}_{production|preview|dev}.apk` and published.
+Point an EAS Build webhook at `POST /hooks/eas`. Finished Android APK builds for `production`, `preview`, or `development`/`dev` are saved as `{displayName}_{production|preview|dev}.apk` (EAS `metadata.appName` / app.json `name`) and published.
 
 ```bash
 eas webhook:create \
