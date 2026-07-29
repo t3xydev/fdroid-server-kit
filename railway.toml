@@ -8,7 +8,8 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "python3 -m uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+# Must run under a shell so ${PORT} expands (Railway passes startCommand as-is otherwise)
+startCommand = "/bin/sh -c 'python3 -m uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}'"
 #healthcheckPath = "/health"
 #healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
