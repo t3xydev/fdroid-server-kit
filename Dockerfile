@@ -6,7 +6,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
     DATA_DIR=/data \
     PYTHONUNBUFFERED=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# bookworm-backports: newer androguard (fixes "res1 must be zero!" on modern APKs)
+RUN echo "deb http://deb.debian.org/debian bookworm-backports main" \
+      > /etc/apt/sources.list.d/backports.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
       fdroidserver \
       rclone \
       wget \
@@ -18,6 +21,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       python3-venv \
       openssl \
       bash \
+    && apt-get install -y --no-install-recommends -t bookworm-backports \
+      androguard \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p "$ANDROID_HOME/build-tools" \
