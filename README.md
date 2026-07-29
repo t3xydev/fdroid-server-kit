@@ -47,6 +47,24 @@ curl -X POST "http://localhost:8000/hooks/publish" \
 docker compose --profile publish run --rm publish
 ```
 
+## Deploy on Railway
+
+[`railway.toml`](railway.toml) builds from the Dockerfile and health-checks `/health`.
+
+1. Create a service from this repo (Railway will pick up the Dockerfile).
+2. **Attach a volume** with mount path **`/data`** (required for APKs, keystore, and generated repo):
+   ```bash
+   railway volume add --mount-path /data
+   ```
+3. Set variables (Variables tab), at least:
+   - `WEBHOOK_TOKEN` — webhook auth
+   - `SELF_HOST=true` — serve repo from this service (or leave S3 blank)
+   - `REPO_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}/fdroid/repo`
+   - `REPO_NAME`, signing fields as needed
+   - Optional `S3_*` for mirror / S3-primary mode
+4. Deploy. Repo (self-host): `https://<domain>/fdroid/repo/`
+
+`DATA_DIR` defaults to `/data` in the image; keep the volume mount at that path.
 ## Bare metal
 
 Requires `fdroidserver`, `rclone`, Android SDK build-tools (`apksigner`), and Java 17+.
