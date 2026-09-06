@@ -13,11 +13,19 @@ export DATA_DIR
 
 load_env
 
-# Always rewrite config.yml / rclone.conf from current env (never touches apks/).
-# Init failure must not block serving an existing repo.
-echo "Syncing config from env (DATA_DIR=$DATA_DIR)..."
-if ! "$SCRIPT_DIR/init.sh"; then
-  echo "WARNING: init.sh failed — continuing with existing config if present."
+# A fresh volume has no F-Droid config yet. Initialization is mandatory there:
+# continuing would report a healthy service backed by an unusable repository.
+# Existing volumes can keep serving their last known-good repo if a later env
+# sync fails. init.sh only rewrites generated config; it never clears APKs or
+# replaces an existing keystore.
+if [ ! -f "$DATA_DIR/config.yml" ]; then
+  echo "Fresh volume detected — running init (DATA_DIR=$DATA_DIR)..."
+  "$SCRIPT_DIR/init.sh"
+else
+  echo "Syncing config from env (DATA_DIR=$DATA_DIR)..."
+  if ! "$SCRIPT_DIR/init.sh"; then
+    echo "WARNING: init.sh failed — continuing with existing config."
+  fi
 fi
 
 # Rebuild the repo index when env-driven settings that affect the index change.

@@ -62,7 +62,7 @@ docker compose --profile publish run --rm publish
 
 ## Deploy on Railway
 
-[`railway.toml`](railway.toml) builds from the Dockerfile and starts via [`scripts/start.sh`](scripts/start.sh) (same as local Docker). On every boot it **re-syncs `config.yml` from env**. If APKs exist and env-driven settings changed, it rebuilds the index **in the background** (so a failed rebuild cannot crash the service). APKs under `/data/apks` are never cleared.
+[`railway.toml`](railway.toml) builds from the Dockerfile and starts via [`scripts/start.sh`](scripts/start.sh) (same as local Docker). A fresh `/data` volume (no `config.yml`) is initialized before the service starts; if that initialization fails, startup stops instead of exposing an unusable repository. On later boots it **re-syncs `config.yml` from env**, while an existing repository can keep serving its last known-good state if that sync fails. If APKs exist and env-driven settings changed, it rebuilds the index **in the background** (so a failed rebuild cannot crash the service). APKs and existing signing keys under `/data` are never cleared or replaced.
 
 1. Create a service from this repo (Railway will pick up the Dockerfile).
 2. **Attach a volume** with mount path **`/data`** (required for APKs, keystore, and generated repo):
