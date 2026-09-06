@@ -28,6 +28,17 @@ else
   fi
 fi
 
+# A config can survive an interrupted first boot, so use the signed v1 index
+# as the durable completion marker. Retrying is safe: build.sh preserves APKs
+# and an existing keystore.
+INITIAL_BUILD_COMPLETED=false
+if [ ! -s "$DATA_DIR/repo/index-v1.jar" ]; then
+  echo "No signed repository index found — running initial build..."
+  ALLOW_EMPTY_REPO=true "$SCRIPT_DIR/build.sh"
+  "$SCRIPT_DIR/deploy.sh"
+  INITIAL_BUILD_COMPLETED=true
+fi
+
 # Rebuild the repo index when env-driven settings that affect the index change.
 # Rebuild runs in the background so a failed fdroid update cannot crash the service.
 FINGERPRINT_FILE="$DATA_DIR/.env_fingerprint"
@@ -60,6 +71,14 @@ NEW_FP="$(env_fingerprint)"
 OLD_FP=""
 if [ -f "$FINGERPRINT_FILE" ]; then
   OLD_FP="$(tr -d '[:space:]' < "$FINGERPRINT_FILE")"
+fi
+
+# The initial build already used the current environment, so record it before
+# the background-rebuild decision to avoid immediately building the same APKs
+# a second time.
+if [ "$INITIAL_BUILD_COMPLETED" = "true" ]; then
+  echo "$NEW_FP" > "$FINGERPRINT_FILE"
+  OLD_FP="$NEW_FP"
 fi
 
 APK_COUNT=$(find "$DATA_DIR/apks" -maxdepth 1 -name '*.apk' 2>/dev/null | wc -l | tr -d ' ')

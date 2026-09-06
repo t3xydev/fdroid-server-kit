@@ -9,7 +9,7 @@ source "$SCRIPT_DIR/common.sh"
 load_env
 cd "$DATA_DIR"
 
-if [ ! -s "$DATA_DIR/rclone.conf" ]; then
+if ! s3_ready; then
   MODE="$(resolve_mode)"
   echo "S3 not configured -- skipping remote deploy (mode=$MODE)."
   echo "Repo is available under $DATA_DIR/repo/ for self-host."
